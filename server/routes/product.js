@@ -46,16 +46,78 @@ router.post("/products", (req, res) => {
 
     let limit = req.body.limit ? parseInt(req.body.limit) : 3;
     let skip = req.body.skip ? parseInt(req.body.skip) : 0;
+    let term = req.body.searchTerm;
 
-    //product collection에 들어 있는 모든 상품 정보를 가져오기
-    Product.find()
-        .populate("writer") //writer와 관련된 테이블을 조인하여 모든 정보를 가져온다.
-        .skip(skip)
-        .limit(limit)
-        .exec((err,productInfo)=>{
-            if(err) return res.status(400).json({success: false, err})
-            return res.status(200).json({success:true, productInfo})
+    let findArgs = {};
+
+    for(let key in req.body.filters){
+        if(req.body.filters[key].length > 0) {
+            console.log('key', key)
+
+            if (key === "price") {
+                findArgs[key] = {
+                    // Greater then equal
+                    $gte: req.body.filters[key][0],
+                    // Less then equal
+                    $lte: req.body.filters[key][1]
+                }
+            } else {
+                findArgs[key] = req.body.filters[key];
+            }
+
+        }
+    }
+    console.log('findArgs', findArgs)
+
+    if(term){
+        //product collection에 들어 있는 모든 상품 정보를 가져오기
+        Product.find(findArgs)
+            .find({ $text: { $search: term } })
+            .populate("writer") //writer와 관련된 테이블을 조인하여 모든 정보를 가져온다.
+            .skip(skip)
+            .limit(limit)
+            .exec((err,productInfo)=>{
+                if(err) return res.status(400).json({success: false, err})
+                return res.status(200).json({
+                    success:true, productInfo,
+                    postSize: productInfo.length})
+            })
+    }else{
+        //product collection에 들어 있는 모든 상품 정보를 가져오기
+        Product.find(findArgs)
+            .populate("writer") //writer와 관련된 테이블을 조인하여 모든 정보를 가져온다.
+            .skip(skip)
+            .limit(limit)
+            .exec((err,productInfo)=>{
+                if(err) return res.status(400).json({success: false, err})
+                return res.status(200).json({
+                    success:true, productInfo,
+                    postSize: productInfo.length})
+            })
+    }
+
+})
+
+//  상품 상세 페이지
+router.get("/products_by_id", (req, res) => {
+
+    let type = req.query.type
+    let productIds = req.query.id
+
+    if (type === "array"){
+        let ids = req.query.id.split(',')
+        productIds = ids.map(item => {
+            return item
+        })
+    }
+
+    Product.find({_id: {$in: productIds} })
+        .populate('writer')
+        .exec((err,product) =>{
+            if(err) return res.status(400).send(err)
+            return res.status(200).json({success:true, product})
         })
 })
+
 
 module.exports = router;

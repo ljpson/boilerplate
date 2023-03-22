@@ -19,7 +19,8 @@ const productSchema = mongoose.Schema({
         default: 0
     },
     continents: {
-        type:String,
+        type:Number,
+        default:1
     },
     images: {
         type:Array,
@@ -36,7 +37,15 @@ const productSchema = mongoose.Schema({
     }
 }, { timestamps:true})
 
-
+productSchema.index({
+    title:'text',
+    description:'text'
+},{
+    weights:{
+        title: 5,
+        description: 1
+    }
+})
 const Product = mongoose.model('Product', productSchema);
 
 module.exports = { Product }
